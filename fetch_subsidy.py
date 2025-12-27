@@ -447,8 +447,8 @@ def main():
     now = datetime.now()
     title = f"{now.month}월 정부 지원금·보조금 안내 ({len(local_services)}건)"
     
-    # 워드프레스 발행 (카테고리 ID는 나중에 설정)
-    post_to_wordpress(title, content)
+    # 워드프레스 발행
+    post_to_wordpress(title, content, category_id=139)
     
     print("✅ 완료!")
 
