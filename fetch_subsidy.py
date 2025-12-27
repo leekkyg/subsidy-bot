@@ -299,7 +299,7 @@ def generate_html(services: List[Dict]) -> str:
         .card-name {{
             font-size: 14px;
             font-weight: 600;
-            color: #fff;
+            color: #E3E3E3
             flex: 1;
         }}
         .card-org {{
