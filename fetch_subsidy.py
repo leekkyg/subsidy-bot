@@ -118,6 +118,19 @@ def fetch_all_services(max_pages: int = 20) -> List[Dict]:
     return all_services
 
 
+def filter_recent_services(services: List[Dict], days: int = 14) -> List[Dict]:
+    """최근 N일 내 신규 등록된 서비스만 필터링"""
+    cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    recent = []
+    
+    for svc in services:
+        reg_date = svc.get('등록일시', '')[:10]
+        if reg_date >= cutoff_date:
+            recent.append(svc)
+    
+    return recent
+
+
 def filter_local_services(services: List[Dict]) -> List[Dict]:
     """여주시/경기도/전국 서비스 필터링"""
     filtered = []
@@ -538,13 +551,16 @@ def create_thumbnail(counts: Dict, output_path: str = "thumbnail.png"):
         return None
     
     now = datetime.now()
+    week = get_week_of_month()
+    week_names = ['첫째', '둘째', '셋째', '넷째', '다섯째']
+    week_str = week_names[min(week-1, 4)]
     
     # 아이콘
     draw.text((100, 130), "📢", font=font_bold_lg, fill='#ffffff', anchor='mm')
     
     # 타이틀
-    draw.text((width//2 + 30, 130), "정부 지원금·보조금 안내", font=font_bold_lg, fill='#ffffff', anchor='mm')
-    draw.text((width//2, 200), f"{now.month}월 지원사업 현황", font=font_bold_md, fill='#60a5fa', anchor='mm')
+    draw.text((width//2 + 30, 130), "신규 지원금·보조금 안내", font=font_bold_lg, fill='#ffffff', anchor='mm')
+    draw.text((width//2, 200), f"{now.month}월 {week_str}주 신규 등록", font=font_bold_md, fill='#60a5fa', anchor='mm')
     
     # 구분선
     draw.line([(200, 250), (1000, 250)], fill='#334155', width=1)
@@ -644,6 +660,14 @@ def post_to_wordpress(title: str, content: str, category_id: int = None, thumbna
         return False
 
 
+def get_week_of_month():
+    """월의 몇째주인지 계산"""
+    now = datetime.now()
+    first_day = now.replace(day=1)
+    adjusted_dom = now.day + first_day.weekday()
+    return (adjusted_dom - 1) // 7 + 1
+
+
 def main():
     print("📢 정부 지원금/보조금 정보 업데이트 시작...")
     
@@ -652,12 +676,16 @@ def main():
     all_services = fetch_all_services(max_pages=15)
     print(f"  전체 서비스: {len(all_services)}건")
     
+    # 최근 2주 내 신규 등록만 필터링
+    recent_services = filter_recent_services(all_services, days=14)
+    print(f"  최근 2주 신규: {len(recent_services)}건")
+    
     # 여주시/경기도/전국 필터링
-    services = filter_local_services(all_services)
+    services = filter_local_services(recent_services)
     print(f"  여주시민 대상: {len(services)}건")
     
     if not services:
-        print("해당 서비스 없음")
+        print("신규 서비스 없음")
         return
     
     # 카테고리별 카운트
@@ -683,13 +711,17 @@ def main():
     
     # 워드프레스 발행
     now = datetime.now()
-    title = f"{now.month}월 정부 지원금·보조금 안내 ({len(services)}건)"
+    week = get_week_of_month()
+    week_names = ['첫째', '둘째', '셋째', '넷째', '다섯째']
+    week_str = week_names[min(week-1, 4)]
+    
+    title = f"{now.month}월 {week_str}주 신규 지원금 안내 ({len(services)}건)"
     
     # iframe 콘텐츠
     iframe_content = f'''
 <iframe src="https://leekkyg.github.io/subsidy-bot/" width="100%" height="800" style="border:none; border-radius:12px; max-width:600px;" loading="lazy"></iframe>
 
-<p style="font-size:12px; color:#666; margin-top:16px;">※ {now.month}월 {now.day}일 기준 업데이트<br>자료 출처: 정부24 보조금24</p>
+<p style="font-size:12px; color:#666; margin-top:16px;">※ {now.month}월 {week_str}주 신규 등록 지원사업<br>자료 출처: 정부24 보조금24</p>
 '''
     
     # 섬네일 업로드
